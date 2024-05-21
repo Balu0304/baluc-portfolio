@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>balu-portfolio</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" type="text/css" href="portfolio.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    </head>
+    <body>
+        <div class="view1" id="home">
+            <div class="above">
+                <p class="name zoom"><b><span>BALU C</span></b></p>
+                <p class="resume zoom"><a href="https://drive.google.com/file/d/1Y93x4H6mv2CbBgRAu-FEXrS6Nd99mhYJ/view?usp=sharing" target="_blank">Resume</a></p>
+                <p class="zoom"><a href="#home">Home</a></p>
+                <p class="zoom"><a href="#skill">Skills</a></p>
+                <p class="zoom"><a href="#project">Projects</a></p>
+                <p class="zoom"><a href="#contact">Contact</a></p>
+            </div>
+
+            <div class="below">
+                <div class="below1">
+                    <p class="typing">Hey<span>!</span> I<span>'</span>m <br><span>C</span>.<span>Balu</span><br><span>F</span>ull <span>S</span>tack <span>D</span>eveloper</p>
+                    <p class="hire zoom"><a href="#contact">Hire Me</a></p>
+                </div>
+                <img class="me zoom" src="IMG-20211114-WA0005.jpg" width="25%">
+            </div>
+        </div>
+
+        <div class="view2" id="skill">
+            <p class="para0" >My <span>Technical</span> Skills<p>
+            <div class="skills">
+
+                <div class = "innercont">
+                    <div class="skill1">
+                        <center><img src="html.png" width="40%" class="img1"></center>
+                        <p class="p1">HTML5</p>
+                    </div><br><br>
+                    <div class="skill1">
+                        <center><img src="css-3.png" width="40%" class="img1"></center>
+                        <p class="p1">CSS3</p>
+                    </div><br><br>
+                    <div class="skill1">
+                        <center><img src="js.png" width="40%" class="img1"></center>
+                        <p class="p1">Javascript</p>
+                    </div><br><br>
+                </div>
+
+                <div class = "innercont">
+                    <div class="skill1">
+                        <center><img src="science.png" width="40%" class="img1"></center>
+                        <p class="p1">React js</p>
+                    </div><br><br>
+                    <div class="skill1">
+                        <center><img src="java.png" width="40%" class="img1"></center>
+                        <p class="p1">Java</p>
+                    </div><br><br>
+                    <div class="skill1">
+                        <center><img src="database.png" width="40%" class="img1"></center>
+                        <p class="p1">MySQL</p>
+                    </div>
+                </div>
+        </div>
+        </div>
+
+        <div class="view3" id="project">
+            <p class="para0">My <span>Projects</span></p>
+            <div class="projectss">
+                <div class="innercont pro zoom">
+                    <div>
+                    <center><h2>Hospital Simulator using <span>VR</span></h2></center>
+                    <p>Used <span>Unity</span> to develop <span>virtual environments</span></p>
+                    <p class="VR">A simulation model is a replica of a real-world system on the computer.
+                    Training doctors using cadavers is effective, however cadavers are expensive.
+                    VR headsets are cheaper, moreover, businesses can amortize the total cost of
+                    the VR solution they buy. VR simulators also make it easy for trainee doctors
+                    and nurses to go through the training multiple times</p>
+                    </div>
+                </div><br><br>
+                <div class="innercont pro zoom">
+                    <div>
+                    <center><h2>Identification of <span>underwater</span> species</h2></center>
+                    <p>Used <span>Machine learning</span> techniques</p>
+                    <p class="ML">In this project we are using condition based ensemble techniques. The main
+                    objective of this study is to detect and recognize fish in a specific dataset.
+                    Ensemble techniques are applied in machine learning for underwater
+                    environments. These techniques involve using multiple models to make
+                    predictions for each data poin</p>
+                    </div>
+                </div><br><br>
+            <div class="innercont pro zoom">
+                <div>
+                <center><h2>Digital clock</h2></center>
+                <p>Used technologies <span>HTML, CSS, Javascript</span></p>
+                <p class="ML"> Implemented a real-time digital clock that displays
+                    the current time, updating every second ot ensure
+                    accuracy. Ensured the application's responsiveness
+                    across various devices and screen sizes</p>
+                </div>
+            </div>
+            </div>
+        </div>
+
+
+            <div class="view4" id="contact">
+
+                <p class="para0"><span>Contact</span> Details</p>
+                <div class="con">
+                    <div class="contacts">
+                        <input class="in" type="text" name="username" placeholder="Name"><br>
+                        <input class="in" type="text" name="usermail" placeholder="Email Address"><br>
+                        <textarea class="in1" name="message"  placeholder="Message....."></textarea><br>
+                        <button class="send zoom" id="msg" onclick="fun()">Submit</button><br>
+                        <p id="show"></p>
+                    </div>  
+                <img class="logimg zoom" src="image.png" width="40%" height="50%">
+                </div>
+                <div class="con1">
+                <p class="info">Email: <span>baluc4430@gmail.com</span></p>
+                <p class="info">LinkedIn: <a class= "link" href="https://www.linkedin.com/in/balu-c-836056238/" target="_blank">Click Here</a></p>
+                </div>
+                <p class="design">© Designed & built by Balu,2023</p> 
+            </div>
+            
+
+            <script>
+                function fun(){
+                    var name= document.getElementById('msg').innerHTML
+                    document.getElementById("show").innerHTML= "Thanks for messaging"
+                }
+            </script>
+    </body>
+</html>
