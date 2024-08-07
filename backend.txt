@@ -1,0 +1,1035 @@
+package com.example.demo;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class App 
+{
+	public static void main(String[] args) {
+        SpringApplication.run(App.class, args);
+    }
+}
+
+package com.example.demo.controller;
+
+import com.example.demo.entity.Client;
+import com.example.demo.entity.Modality;
+import com.example.demo.entity.employee;
+import com.example.demo.repository.employeeRepository;
+import com.example.demo.repository.ClientRepository;
+import com.example.demo.repository.ModalityRepository;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/employee")
+public class employeeController {
+
+    @Autowired
+    private employeeRepository employeeRepository;
+    
+    @Autowired
+    private ClientRepository clientrepo;
+    
+    @Autowired
+    private ModalityRepository Modalityrepo;
+
+    @GetMapping
+    public List<employee> getAllEmployees() {
+        return employeeRepository.findAll();
+    }
+    
+//    @PostMapping
+//    public employee createEmployee(@RequestBody employee employee) {
+//        return employeeRepository.save(employee);
+//    }
+    
+    @GetMapping("/findByName/{name}")
+    public Optional<employee> getEmployeeByName(@RequestParam String name) {
+        return employeeRepository.findByName(name);
+    }
+    
+    @GetMapping("/clients")
+    public List<Client> getAllClients() {
+    	return clientrepo.findAll();
+    }
+    
+    @GetMapping("/modality")
+    public List<Modality> getAllModality(){
+    	return Modalityrepo.findAll();
+    }
+    
+    @PostMapping("/{id}/clients")
+    public employee addClientsToEmployee(@PathVariable Integer id, @RequestBody List<String> clients) {
+        employee employee = employeeRepository.findById(id)
+        		.orElseThrow(() -> new IllegalArgumentException("Employee not found"));
+        employee.getClients().addAll(clients);
+        return employeeRepository.save(employee);
+    }
+    
+    @GetMapping("/{empId}/clients")
+    public List<String> getClientsByEmployeeId(@PathVariable Integer empId) {
+        employee employee = employeeRepository.findById(empId)
+                .orElseThrow(() -> new RuntimeException("Employee not found"));
+        
+        return employee.getClients();
+    }
+    
+    @PostMapping("/{id}/modality")
+    public employee addModality(@PathVariable Integer id, @RequestBody List<String> modality) {
+        employee employee = employeeRepository.findById(id)
+        		.orElseThrow(() -> new IllegalArgumentException("Employee not found"));
+        employee.getModality().addAll(modality);
+        return employeeRepository.save(employee);
+    }
+    
+    @GetMapping("/{empId}/modality")
+    public List<String> getModality(@PathVariable Integer empId){
+    	employee employee = employeeRepository.findById(empId)
+    			.orElseThrow(() -> new RuntimeException("Employee not found"));
+    	return employee.getModality();
+    }
+    
+    @DeleteMapping("/clients/{empId}/clients/{clientName}")
+    public ResponseEntity<?> deleteClient(@PathVariable Integer empId, @PathVariable String clientName) {
+        Optional<employee> optionalEmployee = employeeRepository.findById(empId);
+
+        if (optionalEmployee.isPresent()) {
+            employee employee = optionalEmployee.get();
+            List<String> clients = employee.getClients();
+
+            if (clients.remove(clientName)) {
+            	employeeRepository.save(employee);
+                return ResponseEntity.ok().build();
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Client not found");
+            }
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Employee not found");
+        }
+    }
+    
+    @DeleteMapping("/clients/{empId}/all")
+    public ResponseEntity<?> deleteAllClients(@PathVariable Integer empId) {
+        Optional<employee> optionalEmployee = employeeRepository.findById(empId);
+
+        if (optionalEmployee.isPresent()) {
+            employee employee = optionalEmployee.get();
+            employee.getClients().clear();
+            employeeRepository.save(employee);
+            return ResponseEntity.ok().build();
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Employee not found");
+        }
+    }
+    
+    @DeleteMapping("/{empId}/modality/{modalityName}")
+    public ResponseEntity<?> deleteModality(@PathVariable Integer empId, @PathVariable String modalityName) {
+        Optional<employee> optionalEmployee = employeeRepository.findById(empId);
+        if (optionalEmployee.isPresent()) {
+            employee employee = optionalEmployee.get();
+            employee.getModality().remove(modalityName);
+            employeeRepository.save(employee);
+            return ResponseEntity.ok().build();
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Employee not found");
+        }
+    }
+
+    @DeleteMapping("/{empId}/modality/all")
+    public ResponseEntity<?> deleteAllModalities(@PathVariable Integer empId) {
+        Optional<employee> optionalEmployee = employeeRepository.findById(empId);
+        if (optionalEmployee.isPresent()) {
+            employee employee = optionalEmployee.get();
+            employee.getModality().clear();
+            employeeRepository.save(employee);
+            return ResponseEntity.ok().build();
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Employee not found");
+        }
+    }
+}
+
+package com.example.demo.controller;
+
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import com.example.demo.entity.Item;
+import com.example.demo.repository.ItemRepository;
+import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
+
+import javax.persistence.EntityManagerFactory;
+import javax.servlet.http.HttpServletResponse;
+
+@RestController
+@RequestMapping("/api/items")
+//@CrossOrigin(origins = "http://localhost:4200")
+public class ItemController {
+
+    @Autowired
+    private ItemRepository itemRepository;
+    
+    @Autowired
+    private EntityManagerFactory entityManagerFactory;
+
+    public void clearHibernateCache() {
+        entityManagerFactory.getCache().evictAll();
+    }
+
+    @GetMapping
+    public List<Item> getAllItems() {
+        return itemRepository.findAll();
+    }
+    
+    @GetMapping("/filter")
+    public List<Item> getItems(@RequestParam int claimno){
+    	return itemRepository.findByClaimno(claimno);
+    }
+    
+    @GetMapping("/{rollno}")
+    public ResponseEntity<Item> getItemByRollno(@PathVariable String rollno) {
+        Optional<Item> item = itemRepository.findByRollno(rollno);
+        return item.map(ResponseEntity::ok)
+                   .orElse(ResponseEntity.notFound().build());
+    }
+    
+    @GetMapping("/export")
+    public void exportToExcel(HttpServletResponse response) throws IOException{
+    	response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=items.xlsx");
+        
+        List<Item> itemList = itemRepository.findAll();
+        
+        Workbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("Items");
+        
+        Row headerRow = sheet.createRow(0);
+        headerRow.createCell(0).setCellValue("ID");
+        headerRow.createCell(1).setCellValue("Claim No");
+        headerRow.createCell(2).setCellValue("Roll No");
+        headerRow.createCell(3).setCellValue("Name");
+        headerRow.createCell(4).setCellValue("Department");
+        headerRow.createCell(5).setCellValue("Gender");
+        
+        int rowNum = 1;
+        for (Item item : itemList) {
+            Row row = sheet.createRow(rowNum++);
+            row.createCell(0).setCellValue(item.getId());
+            row.createCell(1).setCellValue(item.getClaimno());
+            row.createCell(2).setCellValue(item.getRollno());
+            row.createCell(3).setCellValue(item.getName());
+            row.createCell(4).setCellValue(item.getDept());
+            row.createCell(5).setCellValue(item.getGender());
+        }
+
+        workbook.write(response.getOutputStream());
+        workbook.close();
+    }
+
+    @PostMapping
+    public ResponseEntity<Item> addItem(@RequestBody Item item) {
+        Item savedItem = itemRepository.save(item);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedItem);
+    }
+
+    @PutMapping("/{id}")
+    public Item updateItem(@PathVariable Long id, @RequestBody Item item) {
+        item.setId(id);
+        return itemRepository.save(item);
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteItem(@PathVariable Long id) {
+        itemRepository.deleteById(id);
+    }
+    
+    
+}
+
+package com.example.demo.controller;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import com.example.demo.entity.Metrix;
+import com.example.demo.entity.Patient;
+import com.example.demo.entity.User;
+import com.example.demo.repository.MetrixRepository;
+import com.example.demo.repository.PatientRepository;
+import com.example.demo.repository.UserRepository;
+
+@RestController
+@RequestMapping("/api/patient")
+public class PatientController {
+
+    @Autowired
+    private PatientRepository patientrepo;
+    
+    @Autowired
+    private MetrixRepository metrixrepo;
+    
+    @Autowired
+    private UserRepository userrepo;
+    
+    @PostMapping("/login")
+    public boolean login(@RequestBody User user) {
+        User existingUser = userrepo.findByUsernameAndPassword(user.getUsername(), user.getPassword());
+        return existingUser != null;
+    }
+
+    @GetMapping
+    public List<Patient> getAllPatients() {
+        return patientrepo.findAll();
+    }
+    
+    @GetMapping("/{id}")
+    public Patient getPatientById(@PathVariable Long id) {
+        return patientrepo.findById(id).orElseThrow();
+    }
+    
+    @PutMapping("/{id}/assign")
+    public Patient updatePatient(@PathVariable Long id, @RequestBody Patient updatedPatient) {
+        Patient existingPatient = patientrepo.findById(id).orElseThrow();
+        existingPatient.setAssign(updatedPatient.getAssign());
+//        existingPatient.setTotalInventory(updatedPatient.getTotalInventory());
+        return patientrepo.save(existingPatient);
+    }
+    
+    @PutMapping("/{id}/inventory")
+    public Metrix updateMetrix(@PathVariable Long id, @RequestBody Metrix updateMetrix) {
+    	Metrix existingMetrix = metrixrepo.findById(id).orElseThrow();
+    	existingMetrix.setAllocated(updateMetrix.getAllocated());
+    	return metrixrepo.save(existingMetrix);
+    }
+    
+    @PutMapping("/{id}/unassign")
+    public Patient unassignEmployee(@PathVariable Long id) {
+        Patient existingPatient = patientrepo.findById(id).orElseThrow();
+        existingPatient.setAssign(null);
+//        existingPatient.setTotalInventory(0);  
+        return patientrepo.save(existingPatient);
+    }
+    
+    @GetMapping("/metrix")
+    public List<Metrix> metrix() {
+        return metrixrepo.findAll();
+    }
+    
+    @GetMapping("/search")
+    public List<Metrix> searchEmployees(@RequestParam String keyword) {
+        return metrixrepo.findByKeyword(keyword);
+    }
+    
+    @GetMapping("/searchpatient")
+    public List<Patient>searchPatients(@RequestParam String keyword){
+    	return patientrepo.findByKeyword(keyword);
+    }
+
+}
+
+package com.example.demo.controller;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+
+    @Bean
+    public WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry registry) {
+                registry.addMapping("/api/**")
+                        .allowedOrigins("http://localhost:4200")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE")
+                        .allowedHeaders("*")
+                        .allowCredentials(true);
+            }
+        };
+    }
+}
+
+package com.example.demo.entity;
+
+import javax.persistence.*;
+
+@Entity
+@Table(name = "clients")
+
+public class Client {
+	
+	@Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private int id;
+	
+	@Column(name = "clients")
+	private String clients;
+	
+	public int getId() {
+		return id;
+	}
+	
+	public void setId(int id) {
+		this.id = id;
+	}
+	
+	public String getClients() {
+		return clients;
+	}
+	
+	public void setClients(String clients) {
+		this.clients = clients;
+	}
+
+}
+package com.example.demo.entity;
+
+import java.util.List;
+
+import javax.persistence.*;
+
+@Entity
+@Table(name = "employee")
+public class employee {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "emp_id")
+    private int empId;
+
+    @Column(name = "user_id")
+    private String userId;
+
+    @Column(name = "name")
+    private String name;
+        
+    @ElementCollection
+    @CollectionTable(name = "emp_clients", joinColumns = @JoinColumn(name = "emp_id"))
+    @Column(name = "client")
+    private List<String> clients;
+    
+    @ElementCollection
+    @CollectionTable(name = "emp_modality", joinColumns = @JoinColumn(name = "emp_id"))
+    @Column(name = "modality")
+    private List<String> modality;
+
+    public int getEmpId() {
+        return empId;
+    }
+
+    public void setEmpId(int empId) {
+        this.empId = empId;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+    
+    public List<String> getClients() {
+        return clients;
+    }
+
+    public void setClients(List<String> clients) {
+        this.clients = clients;
+    }
+    
+    public List<String> getModality() {
+        return modality;
+    }
+
+    public void setModality(List<String> modality) {
+        this.modality = modality;
+    }
+    
+    public void removeClient(String client) {
+        this.clients.remove(client);
+    }
+    
+    public void removeAllClients() {
+        this.clients.clear();
+    }
+    
+    
+}
+package com.example.demo.entity;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.Table;
+
+@Entity
+@Table(name = "items")
+public class Item {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    private int claimno;
+    @Column(name = "rollno", nullable = false, unique = true)
+    private String rollno;
+
+    @Column(name = "name")
+    private String name;
+
+    @Column(name = "dept")
+    private String dept;
+
+    @Column(name = "gender")
+    private String gender;
+    
+    @Column(name = "emp_id")
+    private Long empId;
+    
+    public Item() {
+        this.claimno = 347;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+    
+    public int getClaimno() {
+    	return claimno;
+    }
+    
+    public void setClaimno(int claimno) {
+    	this.claimno = claimno;
+    }
+
+    public String getRollno() {
+        return rollno;
+    }
+
+    public void setRollno(String rollno) {
+        this.rollno = rollno;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDept() {
+        return dept;
+    }
+
+    public void setDept(String dept) {
+        this.dept = dept;
+    }
+    
+    public String getGender() {
+        return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+    
+    public Long getEmpId() {
+    	return empId;
+    }
+    
+    public void setEmpId(Long empId) {
+    	this.empId = empId;
+    }
+}
+package com.example.demo.entity;
+
+import javax.persistence.*;
+
+@Entity
+@Table(name = "Metrix")
+public class Metrix {
+	
+	@Id
+    private Long id;
+    private String name;
+    private int preAllocated;
+    private String attendance;
+    private int norms;
+    private Integer  allocated;
+    private int completed;
+    private int clarification;
+    private boolean isSelected;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getPreAllocated() {
+        return preAllocated;
+    }
+
+    public void setPreAllocated(int preAllocated) {
+        this.preAllocated = preAllocated;
+    }
+
+    public String getAttendance() {
+        return attendance;
+    }
+
+    public void setAttendance(String attendance) {
+        this.attendance = attendance;
+    }
+
+    public int getNorms() {
+        return norms;
+    }
+
+    public void setNorms(int norms) {
+        this.norms = norms;
+    }
+    
+    public Integer  getAllocated() {
+        return allocated;
+    }
+
+    public void setAllocated(Integer allocated) {
+        this.allocated = allocated;
+    }
+
+    public int getCompleted() {
+        return completed;
+    }
+
+    public void setCompleted(int completed) {
+        this.completed = completed;
+    }
+
+    public int getClarification() {
+        return clarification;
+    }
+
+    public void setClarification(int clarification) {
+        this.clarification = clarification;
+    }
+
+    public boolean isSelected() {
+        return isSelected;
+    }
+
+    public void setSelected(boolean isSelected) {
+        this.isSelected = isSelected;
+    }
+
+}
+package com.example.demo.entity;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.Table;
+
+@Entity
+@Table(name = "modality")
+public class Modality {
+	
+	@Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private int id;
+	
+	@Column(name = "modality")
+	private String modality;
+	
+	public int getId() {
+		return id;
+	}
+	
+	public void setId(int id) {
+		this.id = id;
+	}
+	
+	public String getModality() {
+		return modality;
+	}
+	
+	public void setModality(String modality) {
+		this.modality = modality;
+	}
+
+}
+package com.example.demo.entity;
+
+import javax.persistence.*;
+
+@Entity
+@Table(name = "patient")
+public class Patient {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "name", length = 100)
+    private String name;
+
+    @Column(name = "scan_date", length = 50)
+    private String scanDate;
+
+    @Column(name = "total_inventory")
+    private int totalInventory;
+
+    @Column(name = "completed_inventory")
+    private int completedInventory;
+
+    @Column(name = "completed_pending")
+    private int completedPending;
+
+    @Column(name = "pending")
+    private int pending;
+
+    @Column(name = "assign", length = 100)
+    private String assign;
+
+    @Column(name = "start_date", length = 50)
+    private String startDate;
+
+    @Column(name = "file_status", length = 20)
+    private String fileStatus;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getScanDate() {
+        return scanDate;
+    }
+
+    public void setScanDate(String scanDate) {
+        this.scanDate = scanDate;
+    }
+
+    public int getTotalInventory() {
+        return totalInventory;
+    }
+
+    public void setTotalInventory(int totalInventory) {
+        this.totalInventory = totalInventory;
+    }
+
+    public int getCompletedInventory() {
+        return completedInventory;
+    }
+
+    public void setCompletedInventory(int completedInventory) {
+        this.completedInventory = completedInventory;
+    }
+
+    public int getCompletedPending() {
+        return completedPending;
+    }
+
+    public void setCompletedPending(int completedPending) {
+        this.completedPending = completedPending;
+    }
+
+    public int getPending() {
+        return pending;
+    }
+
+    public void setPending(int pending) {
+        this.pending = pending;
+    }
+
+    public String getAssign() {
+        return assign;
+    }
+
+    public void setAssign(String assign) {
+        this.assign = assign;
+    }
+
+    public String getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(String startDate) {
+        this.startDate = startDate;
+    }
+
+    public String getFileStatus() {
+        return fileStatus;
+    }
+
+    public void setFileStatus(String fileStatus) {
+        this.fileStatus = fileStatus;
+    }
+}
+package com.example.demo.entity;
+
+import javax.persistence.Entity;
+import javax.persistence.Id;
+
+@Entity
+public class User {
+	
+    @Id
+    private String username;
+    private String password;
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+}
+package com.example.demo.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.example.demo.entity.Client;
+
+public interface ClientRepository extends JpaRepository<Client,Integer>{
+
+}
+package com.example.demo.repository;
+
+import com.example.demo.entity.employee;
+
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface employeeRepository extends JpaRepository<employee, Integer> {
+	
+	Optional<employee> findByName(String name);
+}
+package com.example.demo.repository;
+
+import java.util.List;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import com.example.demo.entity.Item;
+
+
+public interface ItemRepository extends JpaRepository<Item, Long> {
+	List<Item> findByClaimno(int claimno);
+	Optional<Item> findByRollno (String rollno);
+}
+package com.example.demo.repository;
+
+import com.example.demo.entity.Metrix;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+@Repository
+
+public interface MetrixRepository extends JpaRepository <Metrix, Long> {
+	
+	@Query("SELECT e FROM Metrix e WHERE " +
+		       "LOWER(e.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+		       "LOWER(e.attendance) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+		       "LOWER(e.norms) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+		       "LOWER(e.completed) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+		       "LOWER(e.clarification) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+		       "LOWER(e.preAllocated) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+		List<Metrix> findByKeyword(@Param("keyword") String keyword);
+
+}
+package com.example.demo.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.example.demo.entity.Modality;
+
+public interface ModalityRepository extends JpaRepository<Modality,Integer> {
+
+}
+package com.example.demo.repository;
+
+
+import com.example.demo.entity.Patient;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface PatientRepository extends JpaRepository<Patient, Long> {
+	   
+	
+	@Query("SELECT e FROM Patient e WHERE " +
+		       "LOWER(e.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+		       "LOWER(e.scanDate) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+		       "LOWER(e.totalInventory) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+		       "LOWER(e.completedInventory) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+		       "LOWER(e.completedPending) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+		       "LOWER(e.pending) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+		       "LOWER(e.assign) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+		       "LOWER(e.startDate) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+		       "LOWER(e.fileStatus) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+		List<Patient> findByKeyword(@Param("keyword") String keyword);
+}
+package com.example.demo.repository;
+
+import com.example.demo.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface UserRepository extends JpaRepository<User, String> {
+    User findByUsernameAndPassword(String username, String password);
+}
+
+
+pom.xml
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.example</groupId>
+    <artifactId>demo</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>demo</name>
+    <description>Demo project for Spring Boot</description>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>2.7.0</version>
+        <relativePath/> 
+    </parent>
+
+    <properties>
+        <java.version>17</java.version>
+    </properties>
+
+    <dependencies>
+    
+    
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-tomcat</artifactId>
+        </dependency>
+        <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-test</artifactId>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.poi</groupId>
+        <artifactId>poi-ooxml</artifactId>
+        <version>5.2.2</version>
+    </dependency>
+        
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+
+
+change and update this code version into java21 and springboot 3.3.2
