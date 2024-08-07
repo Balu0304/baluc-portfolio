@@ -1,0 +1,542 @@
+<div class="screen2">
+    <div>
+        <span class="bold">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                class="bi bi-chevron-left" viewBox="0 0 16 16" (click)="back()">
+                <path fill-rule="evenodd"
+                    d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0" />
+            </svg>
+            Incoming inventory
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle"
+                style="margin-right: 300px;" viewBox="0 0 16 16">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
+                <path
+                    d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
+            </svg>
+        </span>
+
+        <span *ngIf="Count > 0" class="Assign">
+            <span class="Assign1" style="font-size: large;">{{ Count }} selected</span>
+            <span class="Assign1"><button class="custom-outline-btn" (click)="cancel()">Cancel</button></span>
+            <span class="Assign1"><button class="custom-btn" (click)="openModal()">Assign</button></span>
+        </span>
+
+    </div>
+
+    <div class="sae">
+        <p>Show<input type="text" class="entry" [value]="paginatedPatients.length" readonly>entries
+            <button class="previous" style="padding-right: 50px !important;" (click)="downloadExcel()">Download</button>
+            <!-- <button class="previous">Attach</button> -->
+        </p>
+        <div>
+            <label for="search">Search: </label>
+            <input type="text" id="search" [(ngModel)]="searchKeyword" (input)="search()" autocomplete="off">
+        </div>
+    </div>
+
+    <div>
+        <table>
+            <thead>
+                <tr>
+                    <th><input type="checkbox" class="checkbox" disabled></th>
+                    <th>File / Patient Name</th>
+                    <th class="center">Scan<br> Date</th>
+                    <th class="center">Total <br>Inventory</th>
+                    <th class="center">Completed <br>Inventory</th>
+                    <th class="center">Completed<br> With<br> Pending</th>
+                    <th class="center">Pending</th>
+                    <th>Assign To</th>
+                    <th>Start <br>Date</th>
+                    <th class="center">File <br>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let patient of paginatedPatients">
+                    <td><input type="checkbox" class="checkbox" (change)="update($event, patient.id)"></td>
+                    <td style="color: blue;">{{ patient.name }}</td>
+                    <td class="center">{{ patient.scanDate }}</td>
+                    <td class="center">{{ patient.totalInventory }}</td>
+                    <td class="center">{{ patient.completedInventory }}</td>
+                    <td class="center">{{ patient.completedPending }}</td>
+                    <td class="center">{{ patient.pending }}</td>
+                    <td>{{ patient.assign }}</td>
+                    <td>{{ patient.startDate }}</td>
+                    <td class="center">{{ patient.fileStatus }}</td>
+                    <td>
+                        <div class="dropout" [class.active]="patient.id === DropdownId">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                class="bi bi-three-dots-vertical more" viewBox="0 0 16 16"
+                                (click)="Dropdown(patient.id)">
+                                <path
+                                    d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0" />
+                            </svg>
+                            <ul>
+                                <li (click)="unassign(patient.id)">Unassign</li>
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+                <tr *ngIf="paginatedPatients.length === 0">
+                    <td colspan="11" class="center">No results found</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="button-group">
+            <button (click)="previousPage()" class="previous">Previous</button>
+            <button (click)="nextPage()" class="previous">Next</button>
+        </div>
+
+        <app-modal #modal (onClose)="handleClose()" (onAssign)="handleAssign($event)"></app-modal>
+    </div>
+
+
+
+------------------------------------------- ts 
+
+import { Component, ViewChild, OnInit } from '@angular/core';
+import { ModalComponent } from '../modal/modal.component';
+import { Router } from '@angular/router';
+import { ApiService } from '../api.service';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+import Swal from 'sweetalert2';
+
+@Component({
+  selector: 'app-income',
+  templateUrl: './income.component.html',
+  styleUrls: ['./income.component.css']
+})
+export class IncomeComponent implements OnInit {
+  Count: number = 0;
+  patients: Patient[] = [];
+  selectedPatientId: number | null = null;
+  searchKeyword: string = '';
+  DropdownId: number | null = null;
+  currentPage = 1;
+  itemsPerPage = 5;
+  paginatedPatients: Patient[] = [];
+
+  @ViewChild('modal') modal!: ModalComponent;
+
+  constructor(private router: Router, private api: ApiService) { }
+
+  ngOnInit(): void {
+    this.getAll();
+  }
+
+  getAll(): void {
+    this.api.getPatients().subscribe(
+      data => {
+        this.patients = data;
+        this.updatePaginatedPatients();
+      },
+      error => {
+        console.error('Error fetching patients', error);
+      }
+    );
+  }
+
+  updatePaginatedPatients() {
+    const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+    const endIndex = Math.min(startIndex + this.itemsPerPage, this.patients.length);
+    this.paginatedPatients = this.patients.slice(startIndex, endIndex);
+  }
+
+  nextPage() {
+    if (this.currentPage * this.itemsPerPage >= this.patients.length) {
+      Swal.fire({
+        title: 'Information',
+        text: 'You have reached the last page.',
+        icon: 'info',
+        position: 'center'
+      });
+    } else {
+      this.currentPage++;
+      this.updatePaginatedPatients();
+    }
+  }
+
+  previousPage() {
+    if (this.currentPage <= 1) {
+      Swal.fire({
+        title: 'Information',
+        text: 'This is the first page.',
+        icon: 'info',
+        position: 'center'
+      });
+    } else {
+      this.currentPage--;
+      this.updatePaginatedPatients();
+    }
+  }
+
+  Dropdown(patientId: number): void {
+    this.DropdownId = this.DropdownId === patientId ? null : patientId;
+  }
+
+  openModal(): void {
+    if (this.selectedPatientId !== null) {
+      this.modal.openpopup(this.selectedPatientId);
+    }
+    this.DropdownId = null;
+  }
+
+  handleClose(): void {
+    this.reset();
+  }
+
+  handleAssign(employee: { name: string }): void {
+    if (this.selectedPatientId !== null) {
+      const patient = this.patients.find(p => p.id === this.selectedPatientId);
+      if (patient) {
+        patient.assign = employee.name;
+        this.api.updatePatient(patient).subscribe(
+          () => {
+            this.getAll();
+          },
+          error => {
+            console.error('Error updating patient', error);
+          }
+        );
+      }
+    }
+    this.selectedPatientId = null;
+  }
+
+  unassign(patientId: number) {
+    this.api.unassignEmployee(patientId).subscribe(() => {
+      this.getAll();
+      this.DropdownId = null;
+      console.log('unassigned successfully');
+    });
+  }
+
+  back(): void {
+    this.router.navigate(['/inventory']);
+  }
+
+  update(event: Event, patientId: number): void {
+    const checkbox = event.target as HTMLInputElement;
+    if (checkbox.checked) {
+      this.Count++;
+      this.selectedPatientId = patientId;
+    } else {
+      this.Count--;
+      this.selectedPatientId = null;
+    }
+  }
+
+  cancel(): void {
+    this.Count = 0;
+    this.selectedPatientId = null;
+    const checkboxes = document.querySelectorAll('.checkbox') as NodeListOf<HTMLInputElement>;
+    checkboxes.forEach(checkbox => {
+      checkbox.checked = false;
+    });
+  }
+
+  search(): void {
+    this.currentPage = 1;
+    if (this.searchKeyword.trim() === '') {
+      this.getAll();
+    } else {
+      this.api.searchPatient(this.searchKeyword).subscribe(
+        patients => this.patients = patients
+      );
+    }
+    this.updatePaginatedPatients();
+  }
+
+  reset(): void {
+    this.Count = 0;
+    this.selectedPatientId = null;
+    this.searchKeyword = '';
+    this.getAll();
+  }
+
+  downloadExcel(): void {
+    const worksheet: XLSX.WorkSheet = XLSX.utils.json_to_sheet(this.patients);
+    const workbook: XLSX.WorkBook = {
+      Sheets: { 'data': worksheet },
+      SheetNames: ['data']
+    };
+    const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    this.saveAsExcelFile(excelBuffer, 'income_data');
+  }
+
+  private saveAsExcelFile(buffer: any, fileName: string): void {
+    const data: Blob = new Blob([buffer], { type: EXCEL_TYPE });
+    saveAs(data, `${fileName}${EXCEL_EXTENSION}`);
+  }
+}
+
+const EXCEL_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8';
+const EXCEL_EXTENSION = '.xlsx';
+
+export interface Patient {
+  id: number;
+  name: string;
+  scanDate: string;
+  totalInventory: number;
+  completedInventory: number;
+  completedPending: number;
+  pending: number;
+  assign: string;
+  startDate: string;
+  fileStatus: string;
+}
+
+
+---------------------------------------------- css
+
+.screen2 {
+    margin: 30px;
+}
+
+.bold {
+    font-size: large;
+    font-weight: bold;
+    /* padding-left: 20px; */
+}
+
+.entry {
+    width: 40px;
+    height: 25px;
+    margin-right: 10px;
+    margin-left: 10px;
+    outline: none;
+}
+
+#search {
+    border-radius: 20px;
+    border: 1px solid gray;
+    width: 200px;
+}
+
+.sae {
+    margin-top: 30px;
+    /* margin-left: 30px; */
+    margin-right: 30px;
+    display: flex;
+    justify-content: space-between;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    text-align: left;
+    padding: 8px;
+}
+
+th:first-child,
+td:first-child {
+    width: 10px;
+}
+
+th:nth-child(2),
+td:nth-child(2) {
+    width: 250px;
+}
+
+th:nth-child(3),
+td:nth-child(3),
+th:nth-child(4),
+td:nth-child(4),
+th:nth-child(5),
+td:nth-child(5),
+th:nth-child(6),
+td:nth-child(6),
+th:nth-child(7),
+td:nth-child(7) {
+    width: 50px;
+}
+
+th:nth-child(8),
+td:nth-child(8) {
+    width: 150px;
+}
+
+th:nth-child(9),
+td:nth-child(9),
+th:nth-child(10),
+td:nth-child(10) {
+    width: 80px;
+}
+
+th:nth-child(11),
+td:nth-child(11) {
+    width: 10px;
+}
+
+tbody tr {
+    border-bottom: 1px solid #ddd;
+}
+
+thead th {
+    border-bottom: 2px solid #ddd;
+}
+
+table,
+th,
+td {
+    border: none;
+}
+
+.checkbox {
+    appearance: none;
+    width: 30px;
+    height: 30px;
+    background-color: white;
+    border: 2px solid rgb(0, 217, 255);
+    cursor: pointer;
+    position: relative;
+    box-sizing: border-box;
+    padding: 2px;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.checkbox:checked::before {
+    content: '✓';
+    color: rgb(0, 217, 255);
+    font-weight: lighter;
+}
+
+.checkbox:disabled {
+    background-color: #f0f0f0;
+    border-color: rgb(0, 217, 255);
+    cursor: not-allowed;
+}
+
+.checkbox:disabled:checked::before {
+    color: #ccc;
+}
+
+.Assign1 {
+    margin-right: 20px;
+}
+
+.custom-outline-btn {
+    color: rgb(0, 217, 255);
+    background-color: transparent;
+    border: 2px solid rgb(0, 217, 255);
+    cursor: pointer;
+    width: 5%;
+    height: 5%;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+.custom-btn {
+    color: white;
+    background-color: rgb(0, 217, 255);
+    border: 2px solid rgb(0, 217, 255);
+    cursor: pointer;
+    width: 5%;
+    height: 5%;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+.Assign {
+    margin-left: 10%;
+}
+
+.center {
+    text-align: center;
+}
+
+.more {
+    cursor: pointer;
+    border: none;
+    background: transparent;
+}
+
+.dropout {
+    position: relative;
+}
+
+.dropout ul {
+    position: absolute;
+    top: 20px;
+    right: 0;
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.12s ease;
+    z-index: 1000;
+}
+
+.dropout.active ul {
+    transform: scaleX(1);
+}
+
+.dropout ul li {
+    padding: 8px 30px;
+    cursor: pointer;
+}
+
+.dropout ul li:hover {
+    background-color: #f0f0f0;
+}
+
+/* .download-btn {
+    background-color: rgb(0, 217, 255);
+    font-weight: bold;
+    border: none; 
+    color: white; 
+    padding: 5px 20px; 
+    text-align: center; 
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px; 
+    margin-left: 30px;
+    cursor: pointer;
+    border-radius: 8px; 
+    transition: background-color 0.3s ease;
+  }
+  
+  .download-btn:hover {
+    background-color:rgb(0, 195, 255);; 
+  } */
+
+.previous {
+    border-color: white;
+    box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px;
+    margin: 19px;
+    width: 100px;
+    border: 1px solid rgb(0, 217, 255);
+    padding: 5px 20px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.previous:hover {
+    background-color: #e6e6e6;
+    border: 1px solid rgb(0, 255, 242);
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin: 10px;
+    margin-left: 85%;
+}
+
+.my-ok-button {
+    background-color: #ff6600 !important;
+    color: white !important;
+}
