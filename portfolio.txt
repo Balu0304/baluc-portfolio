@@ -247,19 +247,22 @@
         <h2>About Me</h2>
         <p>Welcome to my portfolio! I am a passionate developer with a keen interest in building robust and scalable web applications. I enjoy solving problems and learning new technologies.</p>
     </section>
-    <section id="projects">
+   <section id="projects">
         <h2>Projects</h2>
         <div class="project-card">
-            <h3>Project 1</h3>
-            <p>Description of the first project. Include technologies used, challenges faced, and the outcome.</p>
+            <h3>Hospital Simulator using VR</h3>
+            <p>Used Unity to develop virtual environments</p>
+            <p>A simulation model is a replica of a real-world system on the computer. Training doctors using cadavers is effective, however cadavers are expensive. VR headsets are cheaper, moreover, businesses can amortize the total cost of the VR solution they buy. VR simulators also make it easy for trainee doctors and nurses to go through the training multiple times </p>
         </div>
         <div class="project-card">
-            <h3>Project 2</h3>
-            <p>Description of the second project. Mention key features, tools, and the result.</p>
+            <h3>Identification of underwater species</h3>
+            <p>Used Machine learning techniques</p>
+            <p>In this project we are using condition based ensemble techniques. The main objective of this study is to detect and recognize fish in a specific dataset. Ensemble techniques are applied in machine learning for underwater environments. These techniques involve using multiple models to make predictions for each data poin</p>
         </div>
         <div class="project-card">
-            <h3>Project 3</h3>
-            <p>Description of the third project. Highlight what makes it unique and its impact.</p>
+            <h3>Digital clock</h3>
+            <p>Used technologies HTML, CSS, Javascript</p>
+            <p>Implemented a real-time digital clock that displays the current time, updating every second ot ensure accuracy. Ensured the application's responsiveness across various devices and screen sizes</p>
         </div>
     </section>
     <section id="skills">
